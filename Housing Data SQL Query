@@ -1,0 +1,140 @@
+--I performed a self Join here to fix the chaallenge of null values
+ SELECT a.ParcelID,a.PropertyAddress,b.ParcelID,b.PropertyAddress,ISNULL(a.PropertyAddress,b.PropertyAddress)
+ FROM NashvilleHousingData a
+ JOIN NashvilleHousingData b
+ ON a.ParcelID = b.ParcelID
+ AND a.UniqueID <> b.UniqueID
+ WHERE a.PropertyAddress is null
+ 
+ UPDATE a
+ SET PropertyAddress = ISNULL(a.PropertyAddress,b.PropertyAddress)
+ FROM NashvilleHousingData a
+ JOIN NashvilleHousingData b
+ ON a.ParcelID = b.ParcelID
+ AND a.UniqueID <> b.UniqueID
+ WHERE a.PropertyAddress is null
+ 
+
+ --The Nulls values are now updated
+ SELECT *
+ FROM NashvilleHousingData
+ --WHERE PropertyAddress is null
+
+ select
+  SUBSTRING(PropertyAddress, 1,CHARINDEX(',', PropertyAddress)-1 ) as Address,
+   SUBSTRING(PropertyAddress,CHARINDEX(',', PropertyAddress) +1,LEN(PropertyAddress)) as PropertyAddressCity
+  from NashvilleHousingData
+  
+  --#After separating the address, you must create two columns and update the values 
+  ALTER TABLE NashvilleHousingData
+  ADD PropertyFixedAddress nvarchar(255);
+
+  Update NashvilleHousingData
+ SET PropertyAddress = SUBSTRING(PropertyAddress, 1, CHARINDEX(',', PropertyAddress)-1 )
+ 
+ ALTER TABLE NashvilleHousingData
+  ADD PropertyAddressCity nvarchar(255);
+
+  UPDATE NashvilleHousingData
+  SET PropertyAddressCity = SUBSTRING(PropertyAddress,CHARINDEX(',', PropertyAddress) +1,LEN(PropertyAddress)) 
+
+  select *
+  from NashvilleHousingData
+
+  --Populating the Owner Address column
+
+  select OwnerAddress
+  from NashvilleHousingData
+
+  select 
+  PARSENAME(REPLACE(OwnerAddress,',','.'),3),
+  PARSENAME(REPLACE(OwnerAddress,',','.'),2),
+  PARSENAME(REPLACE(OwnerAddress,',','.'),1)
+  from NashvilleHousingData
+
+  ALTER TABLE NashvilleHousingData
+  ADD OwnerFixedAddress nvarchar(255);
+
+  UPDATE NashvilleHousingData
+  SET OwnerFixedAddress = PARSENAME(REPLACE(OwnerAddress,',','.'),3)
+
+  ALTER TABLE NashvilleHousingData
+  ADD OwnerSplitCity nvarchar(255);
+
+   UPDATE NashvilleHousingData
+  SET OwnerSplitCity = PARSENAME(REPLACE(OwnerAddress,',','.'),2)
+
+   ALTER TABLE NashvilleHousingData
+  ADD OwnerSplitState nvarchar(255);
+
+    UPDATE NashvilleHousingData
+  SET OwnerSplitState = PARSENAME(REPLACE(OwnerAddress,',','.'),1)
+
+  select distinct(SoldAsVacant), count(SoldAsVacant)
+  FROM NashvilleHousingdata
+  Group by SoldAsVacant
+  order by 2
+
+
+  --Removing Duplicates in the table
+  --Best using a CTE to deletes the duplicates
+  WITH RowNumCTE AS (
+  select *,
+	ROW_NUMBER() OVER (
+	PARTITION BY ParcelID,
+	PropertyAddress,
+	SalePrice,
+	SaleDate
+	ORDER BY
+	UniqueID
+	) as row_num
+from NashvilleHousingData
+)
+SELECT *
+from RowNumCTE
+where row_num >1
+--order by PropertyAddress
+
+--Deleting some unused columns
+ select SalePrice
+  from NashvilleHousingData
+ 
+
+ALTER TABLE NashvilleHousingData
+DROP COLUMN PropertyAddress,OwnerAddress,TaxDistrict
+
+ALTER TABLE NashvilleHousingData
+DROP COLUMN SaleDate
+
+--lets work on the salesPrice columns by removing the extra zeros
+select
+  PARSENAME(REPLACE(SalePrice,'.00',' '),1)
+  from NashvilleHousingData
+
+  ALTER TABLE NashvilleHousingData
+  ADD SalePrices int;
+
+  update NashvilleHousingData
+  SET SalePrices = PARSENAME(REPLACE(SalePrice,'.00',' '),1)
+
+  select *
+  from NashvilleHousingData
+  --rounding Acreage cloumn to the nearest decimal number.
+
+  ALTER TABLE NashvillehousingData
+  DROP COLUMN Acreage
+  
+  select ROUND(Acreage,1) as Acreage
+  from NashvilleHousingData
+
+  ALTER TABLE NashvilleHousingData
+  DROP COLUMN Acreages
+
+  update NashvilleHousingData
+  SET Acreages = ROUND(Acreage,1)
+
+  ALTER TABLE NashvilleHousingData
+  ADD Acreages float(3);
+
+  update NashvilleHousingData
+  SET Acreages = ROUND(Acreage,1)
